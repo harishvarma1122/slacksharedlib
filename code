@@ -1,0 +1,44 @@
+def notifySlack(String buildStatus = 'STARTED') {
+    // Build status of null means success.
+    buildStatus = buildStatus ?: 'SUCCESS'
+
+    def color
+
+    if (buildStatus == 'STARTED') {
+        color = '#D4DADF'
+    } else if (buildStatus == 'SUCCESS') {
+        color = '#BDFFC3'
+    } else if (buildStatus == 'UNSTABLE') {
+        color = '#FFFE89'
+    } else {
+        color = '#FF9FA1'
+    }
+
+    def msg = "${buildStatus}: `${env.JOB_NAME}` #${env.BUILD_NUMBER}:\n${env.BUILD_URL}"
+
+    slackSend(color: color, message: msg)
+}
+node{
+    def MavenHome = tool name: "maven3.8.4"
+try{
+ 
+ notifySlack("STARTED")
+ 
+ stage('CheckoutCode')
+ {
+ git credentialsId: 'b0093679-6fc3-4399-87a0-121d50e0a9fc', url: 'https://github.com/harishvarma1122/maven-web-application.git'
+ }
+
+ stage('Build'){
+ sh "${MavenHome}/bin/mvn clean package"
+ }
+ 
+ }
+ catch(e) {
+ // If there was an exception thrown, the build failed
+     currentBuild.result = "FAILED"
+ }finally {
+    // Success or failure, always send notifications
+    notifySlack(currentBuild.result)
+  }
+}
